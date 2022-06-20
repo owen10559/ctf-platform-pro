@@ -9,7 +9,7 @@ services:
       - dind
       - redis
     ports:
-      - 5000:10559
+      - 10559:5000
     volumes:
       - ./tmp:/run
       - ./main:/root/main
