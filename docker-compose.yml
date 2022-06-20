@@ -8,7 +8,7 @@ services:
     volumes:
       - ./tmp:/run
       - ./main:/root/main
-      - ./trainings/:/root/mian/trainings
+      - ./trainings/:/root/main/trainings
     working_dir: /root/main
     command: python3 .
 
