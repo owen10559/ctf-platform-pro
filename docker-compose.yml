@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  mian:
+    image: python:3.8
+    ports:
+      - 5000:10559
+    volumes:
+      - ./tmp:/run
+      - ./main:/root/main
+      - ./trainings/:/root/mian/trainings
+    working_dir: /root/main
+    command: python3 .
+
+  dind:
+    image: docker:dind
+    volumes:
+      - ./tmp:/run
+
+  redis:
+    image: redis
