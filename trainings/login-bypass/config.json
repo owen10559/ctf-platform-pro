@@ -1,0 +1,7 @@
+{
+    "training":{
+        "description":"在不知道root用户的密码的情况下进行登录",
+        "hint":"登录绕过，SQL注入",
+        "flag":"flag{login-bypass}"
+    }
+}

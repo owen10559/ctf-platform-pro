@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+
+  main:
+    build: ./src/main
+    volumes:
+      - ./src/main/app.py:/root/app.py
+      - ./status:/root/status
+    ports:
+      - 5000
+    depends_on:
+      - mysql
+    links:
+      - mysql:mysql
+
+  mysql:
+    build: ./src/mysql
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+
