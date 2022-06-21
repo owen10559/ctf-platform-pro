@@ -12,7 +12,7 @@ services:
     ports:
       - 10559:5000
     volumes:
-      - ./tmp/run:/run
+      - ./tmp/run:/var/run
       - ./main:/root/main
       # - /usr/bin/docker:/root/main//usr/bin/docker
       - ./trainings:/root/main/trainings
