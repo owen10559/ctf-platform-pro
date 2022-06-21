@@ -31,7 +31,8 @@ def training_monitor():
     若redis中不存在该training对应的记录，则将该容器移除
     2.遍历所有正在运行的training，若其对应的某个容器已经停止，则重启（先remove再start）该training
     """
-    ...
+    while 1:
+        ...
 
 if __name__ == "__main__":
     ... # 通过多线程执行training_monitor

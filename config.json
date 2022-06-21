@@ -1,0 +1,4 @@
+{
+    "training_ttl": 3600,
+    "max_running_training_num": 3
+}
