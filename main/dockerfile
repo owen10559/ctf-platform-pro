@@ -2,6 +2,7 @@ FROM python:3.8
 
 EXPOSE 5000
 WORKDIR /root/main
+
 # 无法使用RUN指令，否则pip会报错
 CMD pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip3 install --upgrade pip && \
