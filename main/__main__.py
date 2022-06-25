@@ -1,27 +1,40 @@
 import flask
 import apis
+import requests
 
 app = flask.Flask(__name__)
-
 
 @app.route("/test")
 def test():
     return "ok"
 
 @app.route("/<username>/<training_name>", methods=["get"])
-def start(username, training_name):
-    return apis.start(username, training_name)
+def get_training(username, training_name):
+    return apis.get_training(username, training_name)
 
 @app.route("/<username>/<training_name>", methods=["delete"])
-def stop(username, training_name):
-    return apis.stop(username, training_name)
+def stop_training(username, training_name):
+    return apis.stop_training(username, training_name)
 
-@app.route("/flag/<training_name>/<flag>", methods=["get"])
-def verify(training_name, flag):
-    return apis.verify(training_name, flag)
+@app.route("/trainings", methods=["get"])
+def get_training_info(training_name):
+    training_name = requests.args.get("training_name")
+    return apis.get_training_info(training_name)
 
-@app.route("/trainings/<training_id>")
-def entrance():
+@app.route("/trainings/<training_id>", methods=["get"])
+def get_running_training_info(training_id):
+    return apis.get_running_training_info(training_id)
+
+@app.route("/trainings/<training_id>", methods=["delete"])
+def remove_training(training_id):
+    return apis.remove_training(training_id)
+
+@app.route("/flags/<training_name>/<flag>", methods=["get"])
+def verify_flag(training_name, flag):
+    return apis.verify_flag(training_name, flag)
+
+@app.route("/entrances/<training_id>")
+def entrance(training_id):
     """将请求转发至对应的容器"""
     ...
 
