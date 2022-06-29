@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  mian:
+    build: ./main
+    # image: python:3.8
+    tty: true
+    privileged: true
+    depends_on:
+      - dind
+      - redis
+    ports:
+      - 10559:5000
+    volumes:
+      - ./tmp/run:/var/run
+      - ./main:/root/main
+      # - /usr/bin/docker:/root/main//usr/bin/docker
+      - ./trainings:/root/main/trainings
+      - ./config.json:/root/main/config.json
+
+  dind:
+    image: docker:dind
+    privileged: true
+    volumes:
+      - ./tmp/run:/run
+
+  redis:
+    image: redis
