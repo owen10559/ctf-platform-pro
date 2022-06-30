@@ -9,25 +9,24 @@ def test():
     return "ok"
 
 @app.route("/<username>/<training_name>", methods=["get"])
-def get_training(username, training_name):
-    return apis.get_training(username, training_name)
+def get_training_info(username, training_name):
+    return apis.get_training_info(username, training_name)
+
+@app.route("/<username>/<training_name>", methods=["post"])
+def create_training(username, training_name):
+    return apis.create_training(username, training_name)
+
+@app.route("/<username>/<training_name>", methods=["put"])
+def update_training_info(username, training_name):
+    return apis.update_training_info(username, training_name)
 
 @app.route("/<username>/<training_name>", methods=["delete"])
-def stop_training(username, training_name):
-    return apis.stop_training(username, training_name)
+def remove_training(username, training_name):
+    return apis.remove_training(username, training_name)
 
-@app.route("/trainings", methods=["get"])
-def get_training_info(training_name):
-    training_name = requests.args.get("training_name")
-    return apis.get_training_info(training_name)
-
-@app.route("/trainings/<training_id>", methods=["get"])
-def get_running_training_info(training_id):
-    return apis.get_running_training_info(training_id)
-
-@app.route("/trainings/<training_id>", methods=["delete"])
-def remove_training(training_id):
-    return apis.remove_training(training_id)
+@app.route("/trainings/<training_name>", methods=["get"])
+def get_training_config(training_name):
+    return apis.get_training_config(training_name)
 
 @app.route("/flags/<training_name>/<flag>", methods=["get"])
 def verify_flag(training_name, flag):
