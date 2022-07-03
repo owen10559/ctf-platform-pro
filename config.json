@@ -1,4 +1,15 @@
 {
-    "training_ttl": 3600,
-    "max_running_training_num": 3
+    "services":{
+        "docker_sever":{
+            "host":"dind",
+            "port":2375
+        },
+        "redis":{
+            "host":"redis",
+            "port":6379
+        }
+    },
+    "trainings":{
+        "ttl": 3600
+    }
 }

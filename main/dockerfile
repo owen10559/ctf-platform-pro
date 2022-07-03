@@ -1,5 +1,7 @@
 FROM python:3.8
 
+ADD ./docker /usr/local/bin
+
 EXPOSE 5000
 WORKDIR /root/main
 
