@@ -1,28 +1,30 @@
 version: '3'
 
 services:
-  mian:
+  main:
     build: ./main
-    # image: python:3.8
-    tty: true
-    privileged: true
     depends_on:
       - dind
       - redis
     ports:
       - 10559:5000
+    environment:
+      - DOCKER_HOST=tcp://dind:2375
     volumes:
-      - ./tmp/run:/var/run
       - ./main:/root/main
-      # - /usr/bin/docker:/root/main//usr/bin/docker
       - ./trainings:/root/main/trainings
       - ./config.json:/root/main/config.json
+      # - ./tmp:/root/main/tmp
 
   dind:
     image: docker:dind
     privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
     volumes:
-      - ./tmp/run:/run
+      - ./daemon.json:/etc/docker/daemon.json
+      - ./trainings:/root/main/trainings
+      # - ./tmp:/root/main/tmp
 
   redis:
     image: redis
