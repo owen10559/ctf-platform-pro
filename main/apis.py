@@ -1,4 +1,7 @@
+import json
 import config
+import os
+from urllib.parse import unquote
 
 def get_training_info(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器
@@ -40,5 +43,20 @@ def get_training_config(training_name):
 
 def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
+    # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
+    # 由于未明确返回数据格式，所以暂时返回true和false
+    
+    de_flag=unquote(flag)
+    de_training_name=unquote(training_name)
+    # 如果目录不存在就返回false
+    if not os.path.exists("../trainings/" + de_training_name):
+        return "False"
+
+    with open("../trainings/" + de_training_name + "/config.json", "r") as f:
+        std_read = json.load(f)
+    # flag不正确就返回false
+    if (de_flag != std_read["training"]["flag"]):
+        return "False"
+    # flag正确就返回true
+    return "True"
     # 返回
-    ...
