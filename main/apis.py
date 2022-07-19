@@ -1,4 +1,8 @@
 import config
+from requests import request
+import os
+import redis
+import utils
 
 def get_training_info(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器
