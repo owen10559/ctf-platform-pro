@@ -59,4 +59,3 @@ def verify_flag(training_name, flag):
         return {"result":0} , 200
     # flag正确就返回true
     return {"result":1} , 200
-    # 返回
