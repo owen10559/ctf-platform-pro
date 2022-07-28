@@ -50,13 +50,13 @@ def verify_flag(training_name, flag):
     de_training_name=unquote(training_name)
     # 如果目录不存在就返回false
     if not os.path.exists("../trainings/" + de_training_name):
-        return "False"
+        return "" , 404
 
     with open("../trainings/" + de_training_name + "/config.json", "r") as f:
         std_read = json.load(f)
     # flag不正确就返回false
     if (de_flag != std_read["training"]["flag"]):
-        return "False"
+        return {"result":0} , 200
     # flag正确就返回true
-    return "True"
+    return {"result":1} , 200
     # 返回
