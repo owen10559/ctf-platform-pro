@@ -4,12 +4,12 @@ from requests import request
 import os
 import redis
 import utils
+from urllib.parse import unquote
 
 pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
 r = redis.Redis(connection_pool=pool)
 
-import os
-from urllib.parse import unquote
+
 
 def get_training_info(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器
@@ -64,7 +64,6 @@ def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
     # 由于未明确返回数据格式，所以暂时返回true和false
-
     de_flag=unquote(flag)
     de_training_name=unquote(training_name)
     # 如果目录不存在就返回false
