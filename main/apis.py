@@ -1,5 +1,13 @@
 import json
 import config
+from requests import request
+import os
+import redis
+import utils
+
+pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
+r = redis.Redis(connection_pool=pool)
+
 import os
 from urllib.parse import unquote
 
@@ -28,13 +36,24 @@ def update_training_info(username, training_name):
     ...
 
 def remove_training(username, training_name):
-    # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
+    # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_i
+    username = request.args.get('username')
+    training_name = request.args.get('training_name')
+    container_name = utils.get_container(username + "_" + training_name)
+    training_id = request.json.get("training_id")
     # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
+    if container_name is not None:
+        os.system("docker-compose down -d -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name)
     # 删除其在redis中的记录：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
+        r.lrem(username, 0,  training_name)
     # training_id的status及其ttl：key：<training_id>，删除此条记录
+        r.delete(training_id)
     # 返回
-    ...
+        return {training_name: None}, 204
+    else:
+        return "", 404
+
 
 def get_training_config(training_name):
     # 读取对应training的config.json文件
@@ -45,7 +64,7 @@ def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
     # 由于未明确返回数据格式，所以暂时返回true和false
-    
+
     de_flag=unquote(flag)
     de_training_name=unquote(training_name)
     # 如果目录不存在就返回false
