@@ -1,4 +1,14 @@
+import json
 import config
+from requests import request
+import os
+import redis
+import utils
+from urllib.parse import unquote
+
+pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
+r = redis.Redis(connection_pool=pool)
+
 
 def get_training_info(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器
@@ -8,14 +18,28 @@ def get_training_info(username, training_name):
     ...
 
 def create_training(username, training_name):
+    username = unquote(username)
+    training_name = unquote(training_name)
+    if not os.path.exists("../trainings/" + training_name):
+        return "", 404
     # 通过 docker-compose up -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> 启动对应的training
+    cmd = "docker-compose -f ../trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+    os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
+    container = utils.get_container(username + "_" + training_name + "_main_1")
     # main容器的id即为 training_id
+    container_id = container.id
     # 将以下数据存入redis：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
+    ttl = config.config["trainings"]["ttl"]
+    if r.exists(container_id):
+        return {"training_id":container_id, "status":r.lrange(container_id, 0, 0)[0], "ttl":r.ttl(container_id)}, 201
+    r.rpush(username, training_name)
     # training_id的status及其ttl：key：<training_id>，value：1，ttl：***，ttl具体数值从config["trainings"]["ttl"]中读取
+    r.rpush(container_id, 1)
+    r.expire(container_id, ttl)
     # 返回
-    ...
+    return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
 
 def update_training_info(username, training_name):
     # 通过 docker-compose *** -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>，启动或停止对应的training
