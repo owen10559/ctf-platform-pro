@@ -62,7 +62,7 @@ def training_monitor():
         for Container in ContainersList:
             container = client.containers.get(Container.id)
             ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'-',ContainerName)
+            ContainerNameList = re.split(r'_',ContainerName)
             print(ContainerNameList)
         # print(type(ContainersList))
         # print(ContainersList)
@@ -70,7 +70,7 @@ def training_monitor():
 
 if __name__ == "__main__":
     # 通过多线程执行training_monitor
-    t1 = threading.Thread(target=training_monitor)
-    t1.start()
+    # t1 = threading.Thread(target=training_monitor)
+    # t1.start()
     app.run("0.0.0.0")
 
