@@ -16,7 +16,7 @@ def get_training_info(username, training_name):
 
 
 def create_training(username, training_name):
-    # 通过 docker-compose up -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> 启动对应的training
+    # 通过 docker-compose -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up 启动对应的training
     # 根据<username>和<training_name>获取对应的main容器
     # main容器的id即为 training_id
     # 将以下数据存入redis：
@@ -27,7 +27,7 @@ def create_training(username, training_name):
 
 
 def update_training_info(username, training_name):
-    # 通过 docker-compose *** -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>，启动或停止对应的training
+    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
     # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
     # 返回
@@ -41,7 +41,7 @@ def remove_training(username, training_name):
     main_container = utils.get_container(username + "_" + training_name + "_main_1")
     training_id = main_container.id
     if main_container is not None:
-        os.system("docker-compose down -d -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name)
+        os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
         r = redis.Redis(db.redis_conn_pool)
         r.lrem(username, 0,  training_name)
         r.delete(training_id)
