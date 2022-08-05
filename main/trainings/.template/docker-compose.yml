@@ -1,0 +1,18 @@
+version: '3'
+
+# 不允许指定container_name
+services:
+
+  # 必须指定一个main服务作为入口
+  main:
+
+    # 如果需要，请使用build构建基础镜像，而不是通过在容器中运行命令的方式进行构建
+    build:
+
+    # 建议把status文件映射到主容器内，然后在主容器内对其进行修改
+    volumes:
+      -
+
+    # main服务必须且只能映射一个端口，且不建议映射到指定的端口
+    ports:
+      -

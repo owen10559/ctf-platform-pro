@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+
+  main:
+    build: ./
+    volumes:
+      - ./src:/root/src
+      - ./shell.sh:/root/shell.sh
+      - ./status:/root/status
+    ports:
+      - 5000
