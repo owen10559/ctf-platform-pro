@@ -37,8 +37,6 @@ def update_training_info(username, training_name):
 
 def remove_training(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_i
-    username = request.args.get('username')
-    training_name = request.args.get('training_name')
     container_name = utils.get_container(username + "_" + training_name)
     training_id = request.json.get("training_id")
     # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
@@ -48,9 +46,9 @@ def remove_training(username, training_name):
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
         r.lrem(username, 0,  training_name)
     # training_id的status及其ttl：key：<training_id>，删除此条记录
-        r.delete(training_id)   
+        r.delete(training_id)
     # 返回
-        return {training_name: None}, 204
+        return "", 204
     else:
         return "", 404
 
