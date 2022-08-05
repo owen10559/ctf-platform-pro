@@ -6,8 +6,8 @@ import redis
 import utils
 from urllib.parse import unquote
 
-pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
-r = redis.Redis(connection_pool=pool)
+# pool = redis.ConnectionPool(host='redis', port=6379, decode_responses=True)
+# r = redis.Redis(connection_pool=pool)
 
 
 def get_training_info(username, training_name):
@@ -18,12 +18,14 @@ def get_training_info(username, training_name):
     ...
 
 def create_training(username, training_name):
+    pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
+    r = redis.Redis(connection_pool=pool)
     username = unquote(username)
     training_name = unquote(training_name)
-    if not os.path.exists("../trainings/" + training_name):
+    if not os.path.exists("./trainings/" + training_name):
         return "", 404
     # 通过 docker-compose up -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> 启动对应的training
-    cmd = "docker-compose -f ../trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+    cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
     container = utils.get_container(username + "_" + training_name + "_main_1")
@@ -50,13 +52,17 @@ def update_training_info(username, training_name):
 
 def remove_training(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_i
-    username = request.args.get('username')
-    training_name = request.args.get('training_name')
-    container_name = utils.get_container(username + "_" + training_name)
-    training_id = request.json.get("training_id")
+    pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
+    r = redis.Redis(connection_pool=pool)
+    username = unquote(username)
+    training_name = unquote(training_name)
+    res_container = utils.get_container(username + "_" + training_name + "_main_1")
+    training_id=res_container.id
+    container_name = res_container.name
     # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
     if container_name is not None:
-        os.system("docker-compose down -d -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name)
+        os_commond = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml " + username + "_" + training_name + " down -v"
+        os.system(os_commond)
     # 删除其在redis中的记录：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
         r.lrem(username, 0,  training_name)
