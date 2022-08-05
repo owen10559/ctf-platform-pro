@@ -8,4 +8,4 @@ def refresh():
     with open("config.json") as f:
         config = json.load(f)
 
-# refresh()
+refresh()
