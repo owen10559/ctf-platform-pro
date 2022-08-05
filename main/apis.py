@@ -3,9 +3,8 @@ from requests import request
 import os
 import redis
 import utils
+import db
 
-pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
-r = redis.Redis(connection_pool=pool)
 
 
 def get_training_info(username, training_name):
@@ -36,21 +35,21 @@ def update_training_info(username, training_name):
 
 
 def remove_training(username, training_name):
-    # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_i
-    container_name = utils.get_container(username + "_" + training_name)
-    training_id = request.json.get("training_id")
-    # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
-    if container_name is not None:
+    # TODO
+    # 使用 redis 事务完成对应操作
+
+    main_container = utils.get_container(username + "_" + training_name + "_main_1")
+    training_id = main_container.id
+    if main_container is not None:
         os.system("docker-compose down -d -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name)
-    # 删除其在redis中的记录：
-    # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
+        r = redis.Redis(db.redis_conn_pool)
         r.lrem(username, 0,  training_name)
-    # training_id的status及其ttl：key：<training_id>，删除此条记录
         r.delete(training_id)
-    # 返回
+        r.close()
         return "", 204
     else:
         return "", 404
+
 
 
 def get_training_config(training_name):
