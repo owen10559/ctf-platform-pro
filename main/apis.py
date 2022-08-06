@@ -1,5 +1,4 @@
 import config
-from requests import request
 import os
 import redis
 import utils
@@ -35,17 +34,18 @@ def update_training_info(username, training_name):
 
 
 def remove_training(username, training_name):
-    # TODO
-    # 使用 redis 事务完成对应操作
-
     main_container = utils.get_container(username + "_" + training_name + "_main_1")
-    training_id = main_container.id
+    container_id = main_container.id
     if main_container is not None:
         os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
         r = redis.Redis(db.redis_conn_pool)
-        r.lrem(username, 0,  training_name)
-        r.delete(training_id)
-        r.close()
+        pipe = r.pipeline()
+        pipe.multi()
+        pipe.lrem(username, 0,  training_name)
+        pipe.hdel('trainging_id', container_id) 
+    # pipe.delete(container_id)
+        pipe.execute()  
+        pipe.close()
         return "", 204
     else:
         return "", 404
