@@ -7,6 +7,8 @@ import apis
 import threading
 import os
 import docker
+import db
+import redis
 
 app = flask.Flask(__name__)
 
@@ -56,6 +58,9 @@ def training_monitor():
         res = json.load(f)
     MonitorTime = res['monitor_thread']['monitor_time']
     client = docker.from_env()
+    pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
+    r = redis.Redis(pool)
+    # r = redis.Redis(db.redis_conn_pool)
     while 1:
         # 遍历所有容器
         ContainersList = client.containers.list(all=1)
@@ -63,14 +68,30 @@ def training_monitor():
             container = client.containers.get(Container.id)
             ContainerName = container.attrs['Name']
             ContainerNameList = re.split(r'_',ContainerName)
-            print(ContainerNameList)
+            if len(ContainerNameList) < 2:
+                continue
+            if r.exists(ContainerNameList[0]) == 0:
+                print("removing your Container")
+                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+            # print(ContainerNameList)
+        ContainersList = client.containers.list()
+        for Container in ContainersList:
+            container = client.containers.get(Container.id)
+            ContainerName = container.attrs['Name']
+            ContainerNameList = re.split(r'_',ContainerName)
+            if len(ContainerNameList) < 2:
+                continue
+            if r.exists(ContainerNameList[0]) == 0:
+                print("restarting your Container")
+                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+                apis.create_training(ContainerNameList[0],ContainerNameList[1])
         # print(type(ContainersList))
         # print(ContainersList)
         time.sleep(MonitorTime)
 
 if __name__ == "__main__":
     # 通过多线程执行training_monitor
-    # t1 = threading.Thread(target=training_monitor)
-    # t1.start()
+    t1 = threading.Thread(target=training_monitor)
+    t1.start()
     app.run("0.0.0.0")
 
