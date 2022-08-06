@@ -61,7 +61,7 @@ def remove_training(username, training_name):
     container_name = res_container.name
     # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
     if container_name is not None:
-        os_commond = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml " + username + "_" + training_name + " down -v"
+        os_commond = "docker-compose -f trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " down"
         os.system(os_commond)
     # 删除其在redis中的记录：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
@@ -69,7 +69,7 @@ def remove_training(username, training_name):
     # training_id的status及其ttl：key：<training_id>，删除此条记录
         r.delete(training_id)
     # 返回
-        return {training_name: None}, 204
+        return {training_name: None}, 200
     else:
         return "", 404
 
