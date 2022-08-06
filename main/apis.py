@@ -80,6 +80,7 @@ def get_training_config(training_name):
     ...
 
 def verify_flag(training_name, flag):
+    # Author : lsc
     # 读取对应training的config.json文件中的flag，并返回
     # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
     # 由于未明确返回数据格式，所以暂时返回true和false

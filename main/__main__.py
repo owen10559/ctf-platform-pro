@@ -46,6 +46,7 @@ def entrance(training_id):
     ...
 
 def training_monitor():
+    # Author : lsc
     """
     通过多线程循环执行，循环周期由配置文件决定
     1.遍历所有的容器（包括已经停止的），根据容器名（以<username>_<training>的格式作为开头）查询其对应的training在redis中的记录。
