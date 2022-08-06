@@ -46,6 +46,7 @@ def remove_training(username, training_name):
     # pipe.delete(container_id)
         pipe.execute()  
         pipe.close()
+        r.close()
         return "", 204
     else:
         return "", 404
