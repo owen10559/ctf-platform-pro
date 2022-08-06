@@ -18,8 +18,8 @@ def get_training_info(username, training_name):
     ...
 
 def create_training(username, training_name):
-    pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
-    r = redis.Redis(connection_pool=pool)
+    # pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
+    r = redis.Redis(db.redis_conn_pool)
     username = unquote(username)
     training_name = unquote(training_name)
     if not os.path.exists("./trainings/" + training_name):
@@ -52,8 +52,8 @@ def update_training_info(username, training_name):
 
 def remove_training(username, training_name):
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_i
-    pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
-    r = redis.Redis(connection_pool=pool)
+    # pool = redis.ConnectionPool(host='localhost', port=6379, decode_responses=True)
+    r = redis.Redis(db.redis_conn_pool)
     username = unquote(username)
     training_name = unquote(training_name)
     res_container = utils.get_container(username + "_" + training_name + "_main_1")
