@@ -1,31 +1,54 @@
 import json
+from flask import request
 import config
-from requests import request
 import os
 import redis
 import utils
+import db
+import docker
 from urllib.parse import unquote
 
 pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
 r = redis.Redis(connection_pool=pool)
-import db
+client = docker.from_env()
 
 
 def get_training_info(username, training_name):
+    # Author: LRL
     # 根据<username>和<training_name>获取对应的main容器
+    username = unquote(username)
+    training_name = unquote(training_name)
+    if r.exists(username) == 0:
+        return "", 404
+    ok = 0
+    for name in r.lrange(username, 0, -1):
+        if name == training_name:
+            ok = 1
+            break
+    if ok == 0:
+        return "", 404
     # main容器的id即为 training_id
+    training_id = 0
+    for container in client.containers.list(all=True):
+        if container.name == username + "_" + training_name + "_main_1":
+            training_id = container.id
+            break
     # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
     # 返回
-    ...
+    if r.exists(training_id):
+        return {"training_id": training_id, "status": r.lrange(training_id, 0, 0)[0], "ttl": r.ttl(training_id)}, 200
+    else:
+        return {"training_id": training_id, "status": 0, "ttl": 0}, 200
 
 
 def create_training(username, training_name):
+    # Author: LRL
     username = unquote(username)
     training_name = unquote(training_name)
-    if not os.path.exists("../trainings/" + training_name):
+    if not os.path.exists("./trainings/" + training_name):
         return "", 404
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up -d 启动对应的training
-    cmd = "docker-compose -f ../trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+    cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
     container = utils.get_container(username + "_" + training_name + "_main_1")
@@ -35,7 +58,7 @@ def create_training(username, training_name):
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
     ttl = config.config["trainings"]["ttl"]
     if r.exists(container_id):
-        return {"training_id":container_id, "status":r.lrange(container_id, 0, 0)[0], "ttl":r.ttl(container_id)}, 201
+        return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
     r.rpush(username, training_name)
     # training_id的status及其ttl：key：<training_id>，value：1，ttl：***，ttl具体数值从config["trainings"]["ttl"]中读取
     r.rpush(container_id, 1)
@@ -45,11 +68,38 @@ def create_training(username, training_name):
 
 
 def update_training_info(username, training_name):
-    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
+    #Author: LRL
+    status = request.json["status"]
+    username = unquote(username)
+    training_name = unquote(training_name)
+    if r.exists(username) == 0:
+        return "", 404
+    ok = 0
+    for name in r.lrange(username, 0, -1):
+        if name == training_name:
+            ok = 1
+            break
+    if ok == 0:
+        return "", 404
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
-    # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
-    # 返回
-    ...
+    container = utils.get_container(username + "_" + training_name + "_main_1")
+    training_id = container.id
+    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
+    if status == 0:
+        # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
+        r.rpop(training_id)
+        r.rpush(training_id, 0)
+        cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " down"
+        os.system(cmd)
+        # 返回
+        return {"training_id": training_id, "status": 0, "ttl": r.ttl(training_id)}, 201
+    else:
+        r.rpop(training_id)
+        r.rpush(training_id, 1)
+        cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+        os.system(cmd)
+        return {"training_id": training_id, "status": 1, "ttl": r.ttl(training_id)}, 201
+
 
 
 def remove_training(username, training_name):
@@ -59,15 +109,15 @@ def remove_training(username, training_name):
     main_container = utils.get_container(username + "_" + training_name + "_main_1")
     training_id = main_container.id
     if main_container is not None:
-        os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
+        os.system(
+            "docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
         r = redis.Redis(db.redis_conn_pool)
-        r.lrem(username, 0,  training_name)
+        r.lrem(username, 0, training_name)
         r.delete(training_id)
         r.close()
         return "", 204
     else:
         return "", 404
-
 
 
 def get_training_config(training_name):
@@ -80,4 +130,3 @@ def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # 返回
     ...
-
