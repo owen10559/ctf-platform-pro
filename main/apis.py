@@ -8,6 +8,7 @@ from urllib.parse import unquote
 
 pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
 r = redis.Redis(connection_pool=pool)
+import db
 
 
 def get_training_info(username, training_name):
@@ -17,12 +18,13 @@ def get_training_info(username, training_name):
     # 返回
     ...
 
+
 def create_training(username, training_name):
     username = unquote(username)
     training_name = unquote(training_name)
     if not os.path.exists("../trainings/" + training_name):
         return "", 404
-    # 通过 docker-compose up -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> 启动对应的training
+    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up -d 启动对应的training
     cmd = "docker-compose -f ../trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
@@ -41,28 +43,41 @@ def create_training(username, training_name):
     # 返回
     return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
 
+
 def update_training_info(username, training_name):
-    # 通过 docker-compose *** -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>，启动或停止对应的training
+    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
     # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
     # 返回
     ...
 
+
 def remove_training(username, training_name):
-    # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
-    # 通过docker-compose down -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name>移除对应的training
-    # 删除其在redis中的记录：
-    # 用户拥有的training：key：<username>:trainings，value：[]，此处的values是一个列表，因此需要以类似于remove的方式删除
-    # training_id的status及其ttl：key：<training_id>，删除此条记录
-    # 返回
-    ...
+    # TODO
+    # 使用 redis 事务完成对应操作
+
+    main_container = utils.get_container(username + "_" + training_name + "_main_1")
+    training_id = main_container.id
+    if main_container is not None:
+        os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
+        r = redis.Redis(db.redis_conn_pool)
+        r.lrem(username, 0,  training_name)
+        r.delete(training_id)
+        r.close()
+        return "", 204
+    else:
+        return "", 404
+
+
 
 def get_training_config(training_name):
     # 读取对应training的config.json文件
     # 返回
     ...
 
+
 def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # 返回
     ...
+
