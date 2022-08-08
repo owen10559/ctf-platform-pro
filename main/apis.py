@@ -1,7 +1,9 @@
+import json
 import config
 import os
 import redis
 import utils
+from urllib.parse import unquote
 import db
 
 
@@ -13,7 +15,6 @@ def get_training_info(username, training_name):
     # 返回
     ...
 
-
 def create_training(username, training_name):
     # 通过 docker-compose -d -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up 启动对应的training
     # 根据<username>和<training_name>获取对应的main容器
@@ -24,14 +25,12 @@ def create_training(username, training_name):
     # 返回
     ...
 
-
 def update_training_info(username, training_name):
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
     # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
     # 返回
     ...
-
 
 def remove_training(username, training_name):
     main_container = utils.get_container(username + "_" + training_name + "_main_1")
@@ -44,7 +43,7 @@ def remove_training(username, training_name):
         pipe.lrem(username, 0,  training_name)
         pipe.delete(container_id)
         # pipe.hdel('trainging_id', container_id)
-        pipe.execute()  
+        pipe.execute()
         pipe.close()
         r.close()
         return "", 204
@@ -58,9 +57,20 @@ def get_training_config(training_name):
     # 返回
     ...
 
-
 def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
-    # 返回
-    ...
+    # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
+    # 由于未明确返回数据格式，所以暂时返回true和false
+    de_flag=unquote(flag)
+    de_training_name=unquote(training_name)
+    # 如果目录不存在就返回false
+    if not os.path.exists("../trainings/" + de_training_name):
+        return "" , 404
 
+    with open("../trainings/" + de_training_name + "/config.json", "r") as f:
+        std_read = json.load(f)
+    # flag不正确就返回false
+    if (de_flag != std_read["training"]["flag"]):
+        return {"result":0} , 200
+    # flag正确就返回true
+    return {"result":1} , 200
