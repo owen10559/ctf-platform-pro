@@ -1,5 +1,4 @@
 import docker
-import time
 import json
 
 with open("config.json", "r") as f:
