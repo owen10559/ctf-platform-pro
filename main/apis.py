@@ -3,20 +3,31 @@ import config
 import os
 import redis
 import utils
+import docker
+import flask
 from urllib.parse import unquote
 import db
 
+app = flask.Flask(__name__)
 
 
-pool = redis.ConnectionPool(host='http:local', port=2375, decode_responses=True)
-r = redis.Redis(connection_pool=pool)
+
+
+
 client = docker.from_env()
 
+@app.route("/test")
+def test():
+    return "ok"
+
+@app.route("/<username>/<training_name>", methods=["get"])
 def get_training_info(username, training_name):
     # Author: LRL
     # 根据<username>和<training_name>获取对应的main容器
     username = unquote(username)
     training_name = unquote(training_name)
+    r = redis.Redis(db.redis_conn_pool)
+
     if r.exists(username) == 0:
         return "", 404
     ok = 0
@@ -39,7 +50,7 @@ def get_training_info(username, training_name):
     else:
         return {"training_id": training_id, "status": 0, "ttl": 0}, 200
 
-
+@app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
     # Author: LRL
     username = unquote(username)
@@ -56,6 +67,7 @@ def create_training(username, training_name):
     # 将以下数据存入redis：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
     ttl = config.config["trainings"]["ttl"]
+    r = redis.Redis(db.redis_conn_pool)
     if r.exists(container_id):
         return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
     r.rpush(username, training_name)
@@ -65,6 +77,7 @@ def create_training(username, training_name):
     # 返回
     return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
 
+@app.route("/<username>/<training_name>", methods=["put"])
 def update_training_info(username, training_name):
     #Author: LRL
     status = request.json["status"]
@@ -83,6 +96,8 @@ def update_training_info(username, training_name):
     container = utils.get_container(username + "_" + training_name + "_main_1")
     training_id = container.id
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
+    r = redis.Redis(db.redis_conn_pool)
+
     if status == 0:
         # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
         r.rpop(training_id)
@@ -98,6 +113,7 @@ def update_training_info(username, training_name):
         os.system(cmd)
         return {"training_id": training_id, "status": 1, "ttl": r.ttl(training_id)}, 201
 
+@app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
     main_container = utils.get_container(username + "_" + training_name + "_main_1")
     container_id = main_container.id
@@ -117,12 +133,13 @@ def remove_training(username, training_name):
         return "", 404
 
 
-
+@app.route("/trainings/<training_name>", methods=["get"])
 def get_training_config(training_name):
     # 读取对应training的config.json文件
     # 返回
     ...
 
+@app.route("/flags/<training_name>/<flag>", methods=["get"])
 def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
@@ -140,3 +157,11 @@ def verify_flag(training_name, flag):
         return {"result":0} , 200
     # flag正确就返回true
     return {"result":1} , 200
+
+
+
+
+@app.route("/entrances/<training_id>")
+def entrance(training_id):
+    """将请求转发至对应的容器"""
+    ...

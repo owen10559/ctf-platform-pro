@@ -1,47 +1,11 @@
 import json
 import re
 import time
-
-import flask
-import apis
 import threading
-import os
 import docker
 
-app = flask.Flask(__name__)
+import apis
 
-@app.route("/test")
-def test():
-    return "ok"
-
-@app.route("/<username>/<training_name>", methods=["get"])
-def get_training_info(username, training_name):
-    return apis.get_training_info(username, training_name)
-
-@app.route("/<username>/<training_name>", methods=["post"])
-def create_training(username, training_name):
-    return apis.create_training(username, training_name)
-
-@app.route("/<username>/<training_name>", methods=["put"])
-def update_training_info(username, training_name):
-    return apis.update_training_info(username, training_name)
-
-@app.route("/<username>/<training_name>", methods=["delete"])
-def remove_training(username, training_name):
-    return apis.remove_training(username, training_name)
-
-@app.route("/trainings/<training_name>", methods=["get"])
-def get_training_config(training_name):
-    return apis.get_training_config(training_name)
-
-@app.route("/flags/<training_name>/<flag>", methods=["get"])
-def verify_flag(training_name, flag):
-    return apis.verify_flag(training_name, flag)
-
-@app.route("/entrances/<training_id>")
-def entrance(training_id):
-    """将请求转发至对应的容器"""
-    ...
 
 def training_monitor():
     """
@@ -72,5 +36,5 @@ if __name__ == "__main__":
     # 通过多线程执行training_monitor
     t1 = threading.Thread(target=training_monitor)
     t1.start()
-    app.run("0.0.0.0")
+    apis.app.run("0.0.0.0")
 
