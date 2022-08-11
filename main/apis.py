@@ -3,18 +3,11 @@ import config
 import os
 import redis
 import containers
-import docker
 import flask
-from urllib.parse import unquote
 import db
 
 app = flask.Flask(__name__)
-
-
-
-
-
-client = docker.from_env()
+client = containers.client
 
 @app.route("/test")
 def test():
@@ -24,8 +17,6 @@ def test():
 def get_training_info(username, training_name):
     # Author: LRL
     # 根据<username>和<training_name>获取对应的main容器
-    username = unquote(username)
-    training_name = unquote(training_name)
     r = redis.Redis(db.redis_conn_pool)
 
     if r.exists(username) == 0:
@@ -53,15 +44,14 @@ def get_training_info(username, training_name):
 @app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
     # Author: LRL
-    username = unquote(username)
-    training_name = unquote(training_name)
+
     if not os.path.exists("./trainings/" + training_name):
         return "", 404
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up -d 启动对应的training
     cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
-    container = utils.get_container(username + "_" + training_name + "_main_1")
+    container = containers.get_container(username + "_" + training_name + "_main_1")
     # main容器的id即为 training_id
     container_id = container.id
     # 将以下数据存入redis：
@@ -80,9 +70,8 @@ def create_training(username, training_name):
 @app.route("/<username>/<training_name>", methods=["put"])
 def update_training_info(username, training_name):
     #Author: LRL
-    status = request.json["status"]
-    username = unquote(username)
-    training_name = unquote(training_name)
+    status = flask.request.form.get("status")
+
     if r.exists(username) == 0:
         return "", 404
     ok = 0
@@ -93,7 +82,7 @@ def update_training_info(username, training_name):
     if ok == 0:
         return "", 404
     # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
-    container = utils.get_container(username + "_" + training_name + "_main_1")
+    container = containers.get_container(username + "_" + training_name + "_main_1")
     training_id = container.id
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
     r = redis.Redis(db.redis_conn_pool)
@@ -115,7 +104,7 @@ def update_training_info(username, training_name):
 
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
-    main_container = utils.get_container(username + "_" + training_name + "_main_1")
+    main_container = containers.get_container(username + "_" + training_name + "_main_1")
     container_id = main_container.id
     if main_container is not None:
         os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
@@ -144,8 +133,8 @@ def verify_flag(training_name, flag):
     # 读取对应training的config.json文件中的flag，并返回
     # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
     # 由于未明确返回数据格式，所以暂时返回true和false
-    de_flag=unquote(flag)
-    de_training_name=unquote(training_name)
+    de_flag=flag
+    de_training_name=training_name
     # 如果目录不存在就返回false
     if not os.path.exists("../trainings/" + de_training_name):
         return "" , 404
@@ -157,8 +146,6 @@ def verify_flag(training_name, flag):
         return {"result":0} , 200
     # flag正确就返回true
     return {"result":1} , 200
-
-
 
 
 @app.route("/entrances/<training_id>")
