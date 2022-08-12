@@ -37,9 +37,11 @@ def get_training_info(username, training_name):
     # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
     # 返回
     if r.exists(training_id):
-        return {"training_id": training_id, "status": r.lrange(training_id, 0, 0)[0], "ttl": r.ttl(training_id)}, 200
+        ret = {"training_id": training_id, "status": r.get(training_id), "ttl": r.ttl(training_id)}
+        r.close()
+        return ret, 200
     else:
-        return {"training_id": training_id, "status": 0, "ttl": 0}, 200
+        return "", 404
 
 @app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
@@ -60,15 +62,17 @@ def create_training(username, training_name):
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
     ttl = config.config["trainings"]["ttl"]
     r = db.get_redis_conn()
-
-    if r.exists(container_id):
-        return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
     r.rpush(username, training_name)
+
     # training_id的status及其ttl：key：<training_id>，value：1，ttl：***，ttl具体数值从config["trainings"]["ttl"]中读取
-    r.rpush(container_id, 1)
-    r.expire(container_id, ttl)
+    if not r.exists(container_id):
+        r.set(container_id, 1)
+        r.expire(container_id, ttl)
+    ret = {"training_id": container_id, "status": r.get(container_id), "ttl": r.ttl(container_id)}
+    r.close()
+
     # 返回
-    return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
+    return ret, 201
 
 @app.route("/<username>/<training_name>", methods=["put"])
 def update_training_info(username, training_name):
@@ -89,21 +93,19 @@ def update_training_info(username, training_name):
     container = containers.get_container(username + "_" + training_name + "_main_1")
     training_id = container.id
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
-
+    assert (status == 0 or status == 1)
+    # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
+    r.set(training_id, status)
+    cmd = ""
     if status == 0:
-        # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
-        r.rpop(training_id)
-        r.rpush(training_id, 0)
         cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " down"
-        os.system(cmd)
-        # 返回
-        return {"training_id": training_id, "status": 0, "ttl": r.ttl(training_id)}, 201
     else:
-        r.rpop(training_id)
-        r.rpush(training_id, 1)
         cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
-        os.system(cmd)
-        return {"training_id": training_id, "status": 1, "ttl": r.ttl(training_id)}, 201
+    os.system(cmd)
+    ret = {"training_id": training_id, "status": status, "ttl": r.ttl(training_id)}
+    r.close()
+    # 返回
+    return ret, 201
 
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
