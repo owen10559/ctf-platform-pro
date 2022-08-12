@@ -36,12 +36,13 @@ def get_training_info(username, training_name):
             break
     # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
     # 返回
+    ret = ""
     if r.exists(training_id):
         ret = {"training_id": training_id, "status": r.get(training_id), "ttl": r.ttl(training_id)}
-        r.close()
-        return ret, 200
-    else:
+    r.close()
+    if ret == "":
         return "", 404
+    return ret, 200
 
 @app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
