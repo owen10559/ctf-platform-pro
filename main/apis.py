@@ -51,13 +51,16 @@ def create_training(username, training_name):
     cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
+
     container = containers.get_container(username + "_" + training_name + "_main_1")
     # main容器的id即为 training_id
     container_id = container.id
+
     # 将以下数据存入redis：
     # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
     ttl = config.config["trainings"]["ttl"]
-    r = redis.Redis(db.redis_conn_pool)
+    r = db.get_redis_conn()
+
     if r.exists(container_id):
         return {"training_id": container_id, "status": r.lrange(container_id, 0, 0)[0], "ttl": r.ttl(container_id)}, 201
     r.rpush(username, training_name)
@@ -71,6 +74,7 @@ def create_training(username, training_name):
 def update_training_info(username, training_name):
     #Author: LRL
     status = flask.request.form.get("status")
+    r = db.get_redis_conn()
 
     if r.exists(username) == 0:
         return "", 404
@@ -85,7 +89,6 @@ def update_training_info(username, training_name):
     container = containers.get_container(username + "_" + training_name + "_main_1")
     training_id = container.id
     # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
-    r = redis.Redis(db.redis_conn_pool)
 
     if status == 0:
         # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
@@ -108,7 +111,7 @@ def remove_training(username, training_name):
     container_id = main_container.id
     if main_container is not None:
         os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
-        r = redis.Redis(db.redis_conn_pool)
+        r = db.get_redis_conn()
         pipe = r.pipeline()
         pipe.multi()
         pipe.lrem(username, 0,  training_name)
