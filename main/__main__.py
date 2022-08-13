@@ -20,7 +20,6 @@ def training_monitor():
     apis.remove_training(username, training_name)
     apis.create_training(username, training_name)
     """
-
     MonitorTime = config.config['trainings']['detection_period']
     client = containers.client
     while 1:
