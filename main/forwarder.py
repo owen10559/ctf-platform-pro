@@ -69,38 +69,71 @@ def forward_res(local_conn, remote_conn):
 
 def forward_manager(local_conn: socket.socket):
     """将单个用户的请求转发个多个服务器"""
+    is_close = False
     remote_pool = RemotePool()
     buffer = b''
     req = b''
+
     while True:
+        # 接收请求头
         while True:
-            buffer += local_conn.recv(BUFFER_SIZE)
-            if buffer == b'':
-                break
+            data = local_conn.recv(BUFFER_SIZE)
+            if data == b'':
+                # 判断连接是否中断
+                # 连接中断则令is_close = True, 然后 break
+                ...
+            buffer += data
+
             header_end = buffer.find(b'\r\n\r\n')
-            if header_end == -1:  # 没有找到头部结束位置
-                continue
-            header_end += 4  # 加上\r\n\r\n的长度
-            header = buffer[:header_end]
-            if header.find(b'Transfer-Encoding: chunked') != -1:  # transfer-encoding为chunked
-                chunked_end = buffer.find(b'\r\n0\r\n\r\n')
-                if chunked_end == -1:  # 没有找到 chunked 结束位置
-                    continue
-                req = buffer[:chunked_end + 7]  # 加上\r\n0\r\n\r\n的长度
+            if header_end != -1:
+                # 请求头接受完成
                 break
+        if is_close:
+            break
+
+        header_end += 4  # 加上\r\n\r\n的长度
+        header = buffer[:header_end]
+        if header.find(b'Transfer-Encoding: chunked') != -1:
+            # transfer-encoding为chunked
+            while True:
+                data = local_conn.recv(BUFFER_SIZE)
+                if data == b'':
+                    # 判断连接是否中断
+                    # 连接中断则令is_close = True, 然后 break
+                    ...
+                buffer += data
+
+                chunked_end = buffer.find(b'\r\n0\r\n\r\n')
+                if chunked_end != -1:
+                    # 数据接受完成
+                    req = buffer[:chunked_end + 7]  # 加上\r\n0\r\n\r\n的长度
+                    buffer = buffer[chunked_end + 7:]
+                    break
+        else:
             match = re.search(r'Content-Length: (\d+)', header.decode())
             if match:
                 content_length = int(match.group(1))
-                if len(buffer) - header_end < content_length:  # 没接收完整
-                    continue
-                req = buffer[:header_end + content_length]
-                break
-            else:  # 没有Content-Length字段，则请求报文仅有请求头
+                while True:
+                    if len(buffer) - header_end < content_length:
+                        data = local_conn.recv(BUFFER_SIZE)
+                        if data == b'':
+                            # 判断连接是否中断
+                            # 连接中断则令is_close = True, 然后 break
+                            ...
+                        buffer += data
+                    else:
+                        # 请求体接收完整
+                        req = buffer[:header_end + content_length]
+                        buffer = buffer[header_end + content_length:]
+                        break
+            else:
+                # 没有Content-Length字段，则请求报文仅有请求头
                 req = buffer[:header_end]
-                break
-        buffer = buffer.replace(req, b'')
-        if req == b'':
+                buffer = buffer[header_end:]
+        if is_close:
             break
+
+
         logger.debug(req)
         # TODO 从 uri 中获得 remote_ip 和 remote_port
         # uri = req.decode().split(' ')[1]
@@ -109,6 +142,7 @@ def forward_manager(local_conn: socket.socket):
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
         logger.info("Forward: %s -> %s" % (local_conn.getpeername(), remote_conn.getpeername()))
         remote_conn.sendall(req)
+
         for each in threading.enumerate():
             if remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
                 break
@@ -117,6 +151,9 @@ def forward_manager(local_conn: socket.socket):
             thread.setName(remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]))
             thread.start()
 
+    # 连接关闭后清理资源
+    # 1.遍历所有线程，停止与该连接有关的线程
+    # 2.关闭连接池中的所有连接
 
 def run(host: str = "", port: int = 8888):
     local_server = socket.socket()
