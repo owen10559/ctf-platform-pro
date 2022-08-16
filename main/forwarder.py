@@ -1,3 +1,4 @@
+import os
 import re
 import socket
 import logging
@@ -14,11 +15,13 @@ BUFFER_SIZE = 1024 * 1024
 logger = logging.getLogger("Forwarder Logging")
 formatter = logging.Formatter('%(name)-12s %(asctime)s %(levelname)-8s %(lineno)-4d %(message)s',
                               '%Y %b %d %a %H:%M:%S', )
-# 例: Forwarder Logging 2022 Aug 08 Mon 17:20:27 DEBUG    31   Connection closed.
-stream_handler = logging.StreamHandler(sys.stderr)  # 错误输出到logger
+stream_handler = logging.StreamHandler(sys.stderr)
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
-logger.setLevel(logging.DEBUG)
+if 'LOG_LEVEL' in os.environ:
+    logger.setLevel(os.environ['LOG_LEVEL'])
+else:
+    logger.setLevel('INFO')
 
 
 class RemotePool:
@@ -63,6 +66,7 @@ def forward_res(local_conn, remote_conn):
         res = remote_conn.recv(BUFFER_SIZE)
         if res == b'':
             REMOTE_FLAG[remote_conn] = False
+            logger.debug(f'Thread {threading.current_thread().name} closed')
             return
         local_conn.sendall(res)
 
@@ -79,18 +83,15 @@ def forward_manager(local_conn: socket.socket):
         while True:
             data = local_conn.recv(BUFFER_SIZE)
             if data == b'':
-                # 判断连接是否中断
-                # 连接中断则令is_close = True, 然后 break
-                ...
+                is_close = True
+                break
             buffer += data
-
             header_end = buffer.find(b'\r\n\r\n')
             if header_end != -1:
                 # 请求头接受完成
                 break
         if is_close:
             break
-
         header_end += 4  # 加上\r\n\r\n的长度
         header = buffer[:header_end]
         if header.find(b'Transfer-Encoding: chunked') != -1:
@@ -98,11 +99,9 @@ def forward_manager(local_conn: socket.socket):
             while True:
                 data = local_conn.recv(BUFFER_SIZE)
                 if data == b'':
-                    # 判断连接是否中断
-                    # 连接中断则令is_close = True, 然后 break
-                    ...
+                    is_close = True
+                    break
                 buffer += data
-
                 chunked_end = buffer.find(b'\r\n0\r\n\r\n')
                 if chunked_end != -1:
                     # 数据接受完成
@@ -117,9 +116,8 @@ def forward_manager(local_conn: socket.socket):
                     if len(buffer) - header_end < content_length:
                         data = local_conn.recv(BUFFER_SIZE)
                         if data == b'':
-                            # 判断连接是否中断
-                            # 连接中断则令is_close = True, 然后 break
-                            ...
+                            is_close = True
+                            break
                         buffer += data
                     else:
                         # 请求体接收完整
@@ -133,15 +131,14 @@ def forward_manager(local_conn: socket.socket):
         if is_close:
             break
 
-
         logger.debug(req)
         # TODO 从 uri 中获得 remote_ip 和 remote_port
         # uri = req.decode().split(' ')[1]
         remote_ip = '34.227.213.82'
         remote_port = 80
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
-        logger.info("Forward: %s -> %s" % (local_conn.getpeername(), remote_conn.getpeername()))
         remote_conn.sendall(req)
+        logger.info(f"Forward: {local_conn.getpeername()} -> {remote_conn.getpeername()} len: {len(req)}")
 
         for each in threading.enumerate():
             if remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
@@ -151,9 +148,14 @@ def forward_manager(local_conn: socket.socket):
             thread.setName(remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]))
             thread.start()
 
-    # 连接关闭后清理资源
-    # 1.遍历所有线程，停止与该连接有关的线程
-    # 2.关闭连接池中的所有连接
+    logger.info(f"Close: {local_conn.getpeername()}")
+    for each in threading.enumerate():
+        if remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
+            each.join()
+            break
+    remote_pool.close_pool()
+    local_conn.close()
+
 
 def run(host: str = "", port: int = 8888):
     local_server = socket.socket()
