@@ -11,13 +11,18 @@ def set_client(new_client:docker.DockerClient):
     global client
     client = new_client
 
-def get_container(container_name:str):
+def get_container(container_name:str="", container_id:str=""):
     '''
     只能获取正在运行的容器（因此也可以用来判定容器是否在运行）
     '''
-    for container in client.containers.list():
-        if container.name == container_name:
-            return container
+    if container_name != "":
+        for container in client.containers.list():
+            if container.name == container_name:
+                return container
+    else:
+        for container in client.containers.list():
+            if container.id == container_id:
+                return container
 
 def get_export_port(container):
     '''
@@ -65,3 +70,5 @@ def is_ready(training_name:str, training_id:str):
 #             time.sleep(1)
 #     print()
 #     return False
+if __name__ == '__main__':
+    print(get_container(container_id="69f003af451c721c1597f239e656c5c9d25a0a0a6f24e8d913510db6339333dc"))
