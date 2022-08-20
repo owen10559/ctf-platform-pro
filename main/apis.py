@@ -150,18 +150,18 @@ def get_training_config(training_name):
     # 返回
     ...
 
-@app.route("/flags/<training_name>/<flag>", methods=["get"])
-def verify_flag(training_name, flag):
+@app.route("/flags/<training_name>", methods=["get"])
+def verify_flag(training_name):
     # 读取对应training的config.json文件中的flag，并返回
-    # url中的某些特殊符号需要解码，所以调用unquote方法进行解码
     # 由于未明确返回数据格式，所以暂时返回true和false
-    de_flag=flag
+    de_flag=flask.request.args["flag"]
     de_training_name=training_name
+
     # 如果目录不存在就返回false
-    if not os.path.exists("../trainings/" + de_training_name):
+    if not os.path.exists("./trainings/" + de_training_name):
         return "" , 404
 
-    with open("../trainings/" + de_training_name + "/config.json", "r") as f:
+    with open("./trainings/" + de_training_name + "/config.json", "r") as f:
         std_read = json.load(f)
     # flag不正确就返回false
     if (de_flag != std_read["training"]["flag"]):
