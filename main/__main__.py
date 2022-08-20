@@ -20,7 +20,6 @@ def training_monitor():
     apis.remove_training(username, training_name)
     apis.create_training(username, training_name)
     """
-
     MonitorTime = config.config['trainings']['detection_period']
     client = containers.client
     while 1:
@@ -29,8 +28,24 @@ def training_monitor():
         for Container in ContainersList:
             container = client.containers.get(Container.id)
             ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'-',ContainerName)
-            print(ContainerNameList)
+            ContainerNameList = re.split(r'_',ContainerName)
+            if len(ContainerNameList) < 2:
+                continue
+            if r.exists(ContainerNameList[0]) == 0:
+                print("removing your Container")
+                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+            # print(ContainerNameList)
+        ContainersList = client.containers.list()
+        for Container in ContainersList:
+            container = client.containers.get(Container.id)
+            ContainerName = container.attrs['Name']
+            ContainerNameList = re.split(r'_',ContainerName)
+            if len(ContainerNameList) < 2:
+                continue
+            if r.exists(ContainerNameList[0]) == 0:
+                print("restarting your Container")
+                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+                apis.create_training(ContainerNameList[0],ContainerNameList[1])
         # print(type(ContainersList))
         # print(ContainersList)
         time.sleep(MonitorTime)
