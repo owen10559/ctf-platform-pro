@@ -4,6 +4,7 @@ import socket
 import logging
 import sys
 import threading
+import containers
 
 REMOTE_FLAG = {}
 POOL_SIZE = 10
@@ -132,10 +133,15 @@ def forward_manager(local_conn: socket.socket):
             break
 
         logger.debug(req)
-        # TODO 从 uri 中获得 remote_ip 和 remote_port
-        # uri = req.decode().split(' ')[1]
-        remote_ip = '34.227.213.82'
-        remote_port = 80
+        # TODO 从 req 的中获取training_id
+        # training_id 在 req 的 uri 中，uri 的格式为 /entrances/<training_id>/...
+        # 取出后把 uri 的前缀 /entrances/<training_id> 去掉，只保留 /... 的内容
+        # 例如某个 uri 为 /entrances/abc123/index?q=1，则 training_id 为abc123，去掉前缀后的 uri 为 /index?q=1
+
+        container_id = ...
+        remote_ip = 'dind'
+        remote_port = containers.get_container(container_id=container_id)
+
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
         remote_conn.sendall(req)
         logger.info(f"Forward: {local_conn.getpeername()} -> {remote_conn.getpeername()} len: {len(req)}")
