@@ -127,23 +127,34 @@ def update_training_info(username, training_name):
 
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
-    # main_container = containers.get_container(username + "_" + training_name + "_main_1")
-    main_container = client.containers.get(username + "_" + training_name + "_main_1")
-    container_id = main_container.id
-    if main_container is not None:
-        os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
-        r = db.get_redis_conn()
-        pipe = r.pipeline()
-        pipe.multi()
-        pipe.lrem(username, 0,  training_name)
-        pipe.delete(container_id)
-        # pipe.hdel('trainging_id', container_id)
-        pipe.execute()
-        pipe.close()
-        r.close()
-        return "", 204
-    else:
+    # Author: dxw
+    if username == "" or training_name == "":
+        return "", 400
+    try:
+        main_container = utils.get_container(username + "_" + training_name + "_main_1")
+        container_id = main_container.id
+        if main_container is not None:
+            os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
+            r = redis.Redis(db.redis_conn_pool)
+            pipe = r.pipeline()
+            pipe.multi()
+            pipe.lrem(username, 0,  training_name)
+            # pipe.hdel('trainging_id', container_id) 
+            pipe.delete(container_id)
+            pipe.execute()   
+            pipe.close()
+            r.close()
+            return "", 204
+        
+    except NameError:
+        print("变量不存在！")
         return "", 404
+    except ValueError:
+        print("传参不正确")
+        return "", 404
+    except:
+        print("其他错误！")
+        return "", 500
 
 
 @app.route("/trainings/<training_name>", methods=["get"])
