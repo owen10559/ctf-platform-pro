@@ -6,6 +6,7 @@ import docker
 import apis
 import config
 import containers
+import db
 
 def training_monitor():
     """
@@ -22,37 +23,67 @@ def training_monitor():
     """
     MonitorTime = config.config['trainings']['detection_period']
     client = containers.client
+    r = db.get_redis_conn()
     while 1:
+        print("training_monitor start", flush=True)
+        for container in client.containers.list(all=1):
+
+            # BUG
+            # 得到的 username 开头会多出一个 "/"
+            ContainerNameList = re.split(r'_',container.attrs["Name"])
+            if len(ContainerNameList) < 2:
+                continue
+            username = ContainerNameList[0]
+            training_name = ContainerNameList[1]
+
+            # print(ContainerNameList, flush=True)
+
+            _, status = apis.get_training_info(username, training_name)
+            if status == 404:
+                # training 已到期
+                print("clear", username, training_name)
+                apis.remove_training(username, training_name)
+            else:
+                # training 未到期
+                if container.attrs["State"]["Status"] == "exited":
+                    print("restart", username, training_name)
+                    apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+                    apis.create_training(ContainerNameList[0],ContainerNameList[1])
+        time.sleep(MonitorTime)
+
+
         # 遍历所有容器
-        ContainersList = client.containers.list(all=1)
-        for Container in ContainersList:
-            container = client.containers.get(Container.id)
-            ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'_',ContainerName)
-            if len(ContainerNameList) < 2:
-                continue
-            if r.exists(ContainerNameList[0]) == 0:
-                print("removing your Container")
-                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+        # ContainersList = client.containers.list(all=1)
+        # for Container in ContainersList:
+        #     # container = client.containers.get(Container.id)
+
+        #     ContainerName = Container.attrs['Name']
+        #     ContainerNameList = re.split(r'_',ContainerName)
+        #     if len(ContainerNameList) < 2:
+        #         continue
+        #     if r.exists(ContainerNameList[0]) == 0:
+        #         print("removing your Container")
+        #         apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+
             # print(ContainerNameList)
-        ContainersList = client.containers.list()
-        for Container in ContainersList:
-            container = client.containers.get(Container.id)
-            ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'_',ContainerName)
-            if len(ContainerNameList) < 2:
-                continue
-            if r.exists(ContainerNameList[0]) == 0:
-                print("restarting your Container")
-                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
-                apis.create_training(ContainerNameList[0],ContainerNameList[1])
+
+        # ContainersList = client.containers.list()
+        # for Container in ContainersList:
+        #     container = client.containers.get(Container.id)
+        #     ContainerName = container.attrs['Name']
+        #     ContainerNameList = re.split(r'_',ContainerName)
+        #     if len(ContainerNameList) < 2:
+        #         continue
+        #     if r.exists(ContainerNameList[0]) == 0:
+        #         print("restarting your Container")
+        #         apis.remove_training(ContainerNameList[0],ContainerNameList[1])
+        #         apis.create_training(ContainerNameList[0],ContainerNameList[1])
+
         # print(type(ContainersList))
         # print(ContainersList)
-        time.sleep(MonitorTime)
 
 if __name__ == "__main__":
     # 通过多线程执行training_monitor
-    # t1 = threading.Thread(target=training_monitor)
-    # t1.start()
+    threading.Thread(target=training_monitor).start()
     apis.app.run("0.0.0.0")
 

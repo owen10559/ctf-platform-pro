@@ -6,7 +6,7 @@ import containers
 import flask
 import db
 
-app = flask.Flask(__name__)
+app = flask.Flask("__main__")
 client = containers.client
 
 @app.route("/test")
@@ -55,7 +55,8 @@ def create_training(username, training_name):
     os.system(cmd)
     # 根据<username>和<training_name>获取对应的main容器
 
-    container = containers.get_container(username + "_" + training_name + "_main_1")
+    # container = containers.get_container(username + "_" + training_name + "_main_1")
+    container = client.containers.get(username + "_" + training_name + "_main_1")
     if container == None:
         return "", 500
     # main容器的id即为 training_id
@@ -126,7 +127,8 @@ def update_training_info(username, training_name):
 
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
-    main_container = containers.get_container(username + "_" + training_name + "_main_1")
+    # main_container = containers.get_container(username + "_" + training_name + "_main_1")
+    main_container = client.containers.get(username + "_" + training_name + "_main_1")
     container_id = main_container.id
     if main_container is not None:
         os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")

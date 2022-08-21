@@ -22,7 +22,7 @@ logger.addHandler(stream_handler)
 if 'LOG_LEVEL' in os.environ:
     logger.setLevel(os.environ['LOG_LEVEL'])
 else:
-    logger.setLevel('INFO')
+    logger.setLevel('DEBUG')
 
 
 class RemotePool:
@@ -137,10 +137,13 @@ def forward_manager(local_conn: socket.socket):
         # training_id 在 req 的 uri 中，uri 的格式为 /entrances/<training_id>/...
         # 取出后把 uri 的前缀 /entrances/<training_id> 去掉，只保留 /... 的内容
         # 例如某个 uri 为 /entrances/abc123/index?q=1，则 training_id 为abc123，去掉前缀后的 uri 为 /index?q=1
-
-        container_id = ...
+        req_split = req.decode().split(' ')
+        uri = req_split[1]
+        container_id = uri.split('/')[2]
+        req_split[1] = '/' + ''.join(uri.split('/')[3:])
+        req = ' '.join(req_split)
         remote_ip = 'dind'
-        remote_port = containers.get_container(container_id=container_id)
+        remote_port = containers.get_export_port(containers.get_container(container_id=container_id))
 
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
         remote_conn.sendall(req)
