@@ -148,13 +148,13 @@ def remove_training(username, training_name):
             return "", 204
         
     except NameError:
-        print("container不存在！")
+        print("training不存在！")
         return "", 404
     except ValueError:
-        print("用户输入不正确！")
+        print("training不存在！")
         return "", 404
     except:
-        print("其他错误！")
+        print("服务器错误！")
         return "", 500
 
 
