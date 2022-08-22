@@ -129,6 +129,7 @@ def update_training_info(username, training_name):
 def remove_training(username, training_name):
     # Author: dxw
     if username == "" or training_name == "":
+        print("名称不得为空！")
         return "", 400
     try:
         main_container = utils.get_container(username + "_" + training_name + "_main_1")
@@ -147,10 +148,10 @@ def remove_training(username, training_name):
             return "", 204
         
     except NameError:
-        print("变量不存在！")
+        print("container不存在！")
         return "", 404
     except ValueError:
-        print("传参不正确")
+        print("用户输入不正确！")
         return "", 404
     except:
         print("其他错误！")
