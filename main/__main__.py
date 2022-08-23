@@ -27,12 +27,11 @@ def training_monitor():
     while 1:
         print("training_monitor start", flush=True)
         for container in client.containers.list(all=1):
-
-            # BUG
-            # 得到的 username 开头会多出一个 "/"
             ContainerNameList = re.split(r'_',container.attrs["Name"])
             if len(ContainerNameList) < 2:
                 continue
+            if '/' in ContainerNameList[0]:
+                ContainerNameList[0] = ContainerNameList[0].lstrip('/')
             username = ContainerNameList[0]
             training_name = ContainerNameList[1]
 
