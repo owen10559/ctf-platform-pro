@@ -20,39 +20,43 @@ def training_monitor():
     apis.remove_training(username, training_name)
     apis.create_training(username, training_name)
     """
-    MonitorTime = config.config['trainings']['detection_period']
+
+    monitorTime = config.config['trainings']['detection_period']
     client = containers.client
     while 1:
         # 遍历所有容器
-        ContainersList = client.containers.list(all=1)
-        for Container in ContainersList:
+        containersList = client.containers.list(all=1)
+        for Container in containersList:
             container = client.containers.get(Container.id)
-            ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'_',ContainerName)
-            if len(ContainerNameList) < 2:
+            containerName = container.attrs['Name']
+            if 'main_1' not in containerName:
                 continue
-            if r.exists(ContainerNameList[0]) == 0:
-                print("removing your Container")
-                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
-            # print(ContainerNameList)
-        ContainersList = client.containers.list()
-        for Container in ContainersList:
+            containerNameList = re.split(r'_', containerName)
+            if len(containerNameList) < 2:
+                continue
+            if '/' in containerNameList[0]:
+                containerNameList[0] = containerNameList[0].lstrip('/')
+            if r.exists(containerNameList[0]) == 0:
+                apis.remove_training(containerNameList[0], containerNameList[1])
+        containersList = client.containers.list()
+        for Container in containersList:
             container = client.containers.get(Container.id)
-            ContainerName = container.attrs['Name']
-            ContainerNameList = re.split(r'_',ContainerName)
-            if len(ContainerNameList) < 2:
+            containerName = container.attrs['Name']
+            if 'main_1' not in containerName:
                 continue
-            if r.exists(ContainerNameList[0]) == 0:
-                print("restarting your Container")
-                apis.remove_training(ContainerNameList[0],ContainerNameList[1])
-                apis.create_training(ContainerNameList[0],ContainerNameList[1])
-        # print(type(ContainersList))
-        # print(ContainersList)
-        time.sleep(MonitorTime)
+            containerNameList = re.split(r'_', containerName)
+            if len(containerNameList) < 2:
+                continue
+            if '/' in containerNameList[0]:
+                containerNameList[0] = containerNameList[0].lstrip('/')
+            if r.exists(containerNameList[0]) == 0:
+                apis.remove_training(containerNameList[0], containerNameList[1])
+                apis.create_training(containerNameList[0], containerNameList[1])
+        time.sleep(monitorTime)
 
 if __name__ == "__main__":
     # 通过多线程执行training_monitor
     t1 = threading.Thread(target=training_monitor)
     t1.start()
-    app.run("0.0.0.0")
+    apis.app.run("0.0.0.0")
 
