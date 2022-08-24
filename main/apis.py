@@ -148,6 +148,7 @@ def remove_training(username, training_name):
 
 @app.route("/trainings/<training_name>", methods=["get"])
 def get_training_config(training_name):
+    # Author:@LSC
     # 读取对应training的config.json文件
     # 返回
     if not os.path.exists("./trainings/"+training_name):
