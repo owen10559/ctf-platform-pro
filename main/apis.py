@@ -155,9 +155,12 @@ def get_training_config(training_name):
         return "" , 404
     if not os.path.exists("./trainings/"+training_name+"/config.json"):
         return "" , 404
-    with open("./trainings/"+training_name+"/config.json") as f:
-        config = json.load(f)
-        return config , 200
+    try:
+        with open("./trainings/"+training_name+"/config.json") as f:
+            config = json.load(f)
+            return config , 200
+    except Exception as e:
+        return "" , 500
 
 @app.route("/flags/<training_name>", methods=["get"])
 def verify_flag(training_name):
