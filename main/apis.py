@@ -153,9 +153,10 @@ def remove_training(username, training_name):
     except ValueError:
         print("training不存在！")
         return "", 404
-    except:
+    except Exception as e:
         print("服务器错误！")
-        return "", 500
+        print(repr(e))
+        return "error", 500
 
 
 @app.route("/trainings/<training_name>", methods=["get"])
