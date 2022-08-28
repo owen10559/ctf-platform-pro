@@ -44,7 +44,7 @@ def get_training_info(username, training_name):
         # 返回
         ret = ""
         if r.exists(training_id):
-            ret = {"training_id": training_id, "status": eval(r.get(training_id)), "ttl": eval(r.ttl(training_id))}
+            ret = {"training_id": training_id, "status": eval(r.get(training_id)), "ttl": r.ttl(training_id)}
         r.close()
         if ret == "":
             return "", 404
@@ -84,7 +84,7 @@ def create_training(username, training_name):
             pipe.set(container_id, 1)
             pipe.expire(container_id, ttl)
         pipe.execute()
-        ret = {"training_id": container_id, "status": eval(r.get(container_id)), "ttl": eval(r.ttl(container_id))}
+        ret = {"training_id": container_id, "status": eval(r.get(container_id)), "ttl": r.ttl(container_id)}
         r.close()
 
         # 返回
@@ -137,7 +137,7 @@ def update_training_info(username, training_name):
             cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
         os.system(cmd)
         pipe.execute()
-        ret = {"training_id": training_id, "status": status, "ttl": eval(r.ttl(training_id))}
+        ret = {"training_id": training_id, "status": status, "ttl": r.ttl(training_id)}
         r.close()
         # 返回
         return ret, 201
