@@ -76,6 +76,7 @@ def forward_manager(local_conn: socket.socket):
     """将单个用户的请求转发个多个服务器"""
     is_close = False
     remote_pool = RemotePool()
+    remote_conn = None
     buffer = b''
     req = b''
 
@@ -139,12 +140,13 @@ def forward_manager(local_conn: socket.socket):
         # 例如某个 uri 为 /entrances/abc123/index?q=1，则 training_id 为abc123，去掉前缀后的 uri 为 /index?q=1
         req_split = req.decode().split(' ')
         uri = req_split[1]
+        if not uri.startswith('/entrances/'):
+            break
         container_id = uri.split('/')[2]
         req_split[1] = '/' + ''.join(uri.split('/')[3:])
         req = ' '.join(req_split)
         remote_ip = 'dind'
-        remote_port = containers.get_export_port(containers.get_container(container_id=container_id))
-
+        remote_port = containers.get_container(container_id=container_id)
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
         remote_conn.sendall(req)
         logger.info(f"Forward: {local_conn.getpeername()} -> {remote_conn.getpeername()} len: {len(req)}")
@@ -153,13 +155,12 @@ def forward_manager(local_conn: socket.socket):
             if remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
                 break
         else:
-            thread = threading.Thread(target=forward_res, args=(local_conn, remote_conn))
-            thread.setName(remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]))
-            thread.start()
+            threading.Thread(target=forward_res, args=(local_conn, remote_conn),
+                             name=remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1])).start()
 
     logger.info(f"Close: {local_conn.getpeername()}")
     for each in threading.enumerate():
-        if remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
+        if remote_conn and remote_conn.getpeername()[0] + ':' + str(remote_conn.getpeername()[1]) == each.getName():
             each.join()
             break
     remote_pool.close_pool()
