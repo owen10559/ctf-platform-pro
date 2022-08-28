@@ -146,7 +146,7 @@ def forward_manager(local_conn: socket.socket):
         req_split[1] = '/' + ''.join(uri.split('/')[3:])
         req = ' '.join(req_split)
         remote_ip = 'dind'
-        remote_port = containers.get_container(container_id=container_id)
+        remote_port = containers.get_export_port(containers.get_container(container_id=container_id))
         remote_conn = remote_pool.get_pool(remote_ip, remote_port)
         remote_conn.sendall(req)
         logger.info(f"Forward: {local_conn.getpeername()} -> {remote_conn.getpeername()} len: {len(req)}")
