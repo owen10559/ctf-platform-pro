@@ -16,44 +16,41 @@ def test():
 @app.route("/<username>/<training_name>", methods=["get"])
 def get_training_info(username, training_name):
     # Author: LRL
-    if username == "" or training_name == "":
-        return "", 400
-
-    # 根据<username>和<training_name>获取对应的main容器
     try:
+        if username == "" or training_name == "":
+            return "", 400
+
+        # 根据<username>和<training_name>获取对应的main容器
         r = db.get_redis_conn()
         if r.exists(username) == 0:
             return "", 404
-    except:
-        print("Fail to connect to redis and update data")
-        return "", 500
-    ok = 0
-    for name in r.lrange(username, 0, -1):
-        if name == training_name:
-            ok = 1
-            break
-    if ok == 0:
-        return "", 404
 
-    # main容器的id即为 training_id
-    try:
+        ok = 0
+        for name in r.lrange(username, 0, -1):
+            if name == training_name:
+                ok = 1
+                break
+        if ok == 0:
+            return "", 404
+
+        # main容器的id即为 training_id
         training_id = 0
         for container in client.containers.list(all=True):
             if container.name == username + "_" + training_name + "_main_1":
                 training_id = container.id
                 break
-    except:
-        print("Fail to connect to docker and read information from it")
+
+        # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
+        # 返回
+        ret = ""
+        if r.exists(training_id):
+            ret = {"training_id": training_id, "status": eval(r.get(training_id)), "ttl": eval(r.ttl(training_id))}
+        r.close()
+        if ret == "":
+            return "", 404
+        return ret, 200
+    except print(0):
         return "", 500
-    # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
-    # 返回
-    ret = ""
-    if r.exists(training_id):
-        ret = {"training_id": training_id, "status": eval(r.get(training_id)), "ttl": eval(r.ttl(training_id))}
-    r.close()
-    if ret == "":
-        return "", 404
-    return ret, 200
 
 @app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
