@@ -176,7 +176,6 @@ def remove_training(username, training_name):
         app.log_exception(e)
         return "error", 500
 
-
 @app.route("/trainings/<training_name>", methods=["get"])
 def get_training_config(training_name):
     # 读取对应training的config.json文件
@@ -201,7 +200,6 @@ def verify_flag(training_name):
         return {"result":0} , 200
     # flag正确就返回true
     return {"result":1} , 200
-
 
 @app.route("/entrances/<training_id>")
 def entrance(training_id):
