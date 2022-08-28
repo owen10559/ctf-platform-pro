@@ -84,6 +84,6 @@ def training_monitor():
 
 if __name__ == "__main__":
     # 通过多线程执行training_monitor
-    threading.Thread(target=training_monitor).start()
+    # threading.Thread(target=training_monitor).start()
     apis.app.run("0.0.0.0")
 
