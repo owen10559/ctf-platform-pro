@@ -183,6 +183,7 @@ def verify_flag(training_name):
         else:
             return {"result":1} , 200
     except Exception as e:
+        app.log_exception(e)
         return  "" , 500
 
 
