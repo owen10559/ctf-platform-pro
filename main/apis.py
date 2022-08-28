@@ -128,11 +128,12 @@ def update_training_info(username, training_name):
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
     # Author: dxw
-    if username == "" or training_name == "":
-        print("名称不得为空！")
-        return "", 400
     try:
-        main_container = utils.get_container(username + "_" + training_name + "_main_1")
+        if username == "" or training_name == "":
+            print("名称不得为空！")
+            return "", 400
+
+        main_container = containers.get_container(username + "_" + training_name + "_main_1")
         container_id = main_container.id
         if main_container is not None:
             os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
@@ -140,13 +141,13 @@ def remove_training(username, training_name):
             pipe = r.pipeline()
             pipe.multi()
             pipe.lrem(username, 0,  training_name)
-            # pipe.hdel('trainging_id', container_id) 
+            # pipe.hdel('trainging_id', container_id)
             pipe.delete(container_id)
-            pipe.execute()   
+            pipe.execute()
             pipe.close()
             r.close()
             return "", 204
-        
+
     except NameError:
         print("training不存在！")
         return "", 404
