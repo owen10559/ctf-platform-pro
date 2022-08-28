@@ -157,10 +157,10 @@ def remove_training(username, training_name):
             return "", 400
 
         main_container = containers.get_container(username + "_" + training_name + "_main_1")
-        container_id = main_container.id
         if main_container is not None:
+            container_id = main_container.id
             os.system("docker-compose -f trainings/" + training_name + "/docker-compose.yml -p" + username + "_" + training_name + "down")
-            r = redis.Redis(db.redis_conn_pool)
+            r = db.get_redis_conn()
             pipe = r.pipeline()
             pipe.multi()
             pipe.lrem(username, 0,  training_name)

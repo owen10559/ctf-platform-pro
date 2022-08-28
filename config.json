@@ -10,7 +10,7 @@
         }
     },
     "trainings":{
-        "ttl": 60,
+        "ttl": 3600,
         "detection_period": 10
     }
 }
