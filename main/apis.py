@@ -165,22 +165,25 @@ def get_training_config(training_name):
 
 @app.route("/flags/<training_name>", methods=["get"])
 def verify_flag(training_name):
+    # LSC
     # 读取对应training的config.json文件中的flag，并返回
     # 由于未明确返回数据格式，所以暂时返回true和false
-    de_flag=flask.request.args["flag"]
-    de_training_name=training_name
-
     # 如果目录不存在就返回false
-    if not os.path.exists("./trainings/" + de_training_name):
-        return "" , 404
-
-    with open("./trainings/" + de_training_name + "/config.json", "r") as f:
-        std_read = json.load(f)
-    # flag不正确就返回false
-    if (de_flag != std_read["training"]["flag"]):
-        return {"result":0} , 200
-    # flag正确就返回true
-    return {"result":1} , 200
+    try:
+        de_flag=flask.request.args["flag"]
+        de_training_name=training_name
+        if not os.path.exists("./trainings/" + de_training_name):
+            return "" , 404
+        with open("./trainings/" + de_training_name + "/config.json", "r") as f:
+            std_read = json.load(f)
+        # flag不正确就返回false
+        if (de_flag != std_read["training"]["flag"]):
+            return {"result":0} , 200
+        # flag正确就返回true
+        else:
+            return {"result":1} , 200
+    except Exception as e:
+        return  "" , 500
 
 
 @app.route("/entrances/<training_id>")
