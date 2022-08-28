@@ -132,9 +132,9 @@ def update_training_info(username, training_name):
         pipe.expire(training_id, ttl)
         cmd = ""
         if status == 0:
-            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " down"
+            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " stop"
         else:
-            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " start"
         os.system(cmd)
         pipe.execute()
         ret = {"training_id": training_id, "status": status, "ttl": r.ttl(training_id)}
