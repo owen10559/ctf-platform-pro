@@ -16,114 +16,134 @@ def test():
 @app.route("/<username>/<training_name>", methods=["get"])
 def get_training_info(username, training_name):
     # Author: LRL
-    # 根据<username>和<training_name>获取对应的main容器
-    r = db.get_redis_conn()
+    try:
+        if username == "" or training_name == "":
+            return "", 400
 
-    if r.exists(username) == 0:
-        return "", 404
-    ok = 0
-    for name in r.lrange(username, 0, -1):
-        if name == training_name:
-            ok = 1
-            break
-    if ok == 0:
-        return "", 404
-    # main容器的id即为 training_id
-    training_id = 0
-    for container in client.containers.list(all=True):
-        if container.name == username + "_" + training_name + "_main_1":
-            training_id = container.id
-            break
-    # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
-    # 返回
-    ret = ""
-    if r.exists(training_id):
-        ret = {"training_id": training_id, "status": r.get(training_id), "ttl": r.ttl(training_id)}
-    r.close()
-    if ret == "":
-        return "", 404
-    return ret, 200
+        # 根据<username>和<training_name>获取对应的main容器
+        r = db.get_redis_conn()
+        if r.exists(username) == 0:
+            return "", 404
+
+        ok = 0
+        for name in r.lrange(username, 0, -1):
+            if name == training_name:
+                ok = 1
+                break
+        if ok == 0:
+            return "", 404
+
+        # main容器的id即为 training_id
+        training_id = 0
+        for container in client.containers.list(all=True):
+            if container.name == username + "_" + training_name + "_main_1":
+                training_id = container.id
+                break
+
+        # 从redis中读取对应的status和ttl，其中key：<training_id>，value为该training的status，该数据的ttl即为该training的ttl
+        # 返回
+        ret = ""
+        if r.exists(training_id):
+            ret = {"training_id": training_id, "status": eval(r.get(training_id)), "ttl": eval(r.ttl(training_id))}
+        r.close()
+        if ret == "":
+            return "", 404
+        return ret, 200
+    except Exception as e:
+        app.log_exception(e)
+        return "", 500
 
 @app.route("/<username>/<training_name>", methods=["post"])
 def create_training(username, training_name):
     # Author: LRL
+    try:
+        if username == "" or training_name == "":
+            return "", 400
+        if not os.path.exists("./trainings/" + training_name):
+            return "", 404
 
-    if not os.path.exists("./trainings/" + training_name):
-        return "", 404
-    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up -d 启动对应的training
-    cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
-    os.system(cmd)
-    # 根据<username>和<training_name>获取对应的main容器
+        # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> up -d 启动对应的training
+        cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+        os.system(cmd)
 
-    # container = containers.get_container(username + "_" + training_name + "_main_1")
-    container = client.containers.get(username + "_" + training_name + "_main_1")
-    if container == None:
+        # 根据<username>和<training_name>获取对应的main容器
+        container = containers.get_container(username + "_" + training_name + "_main_1")
+        # main容器的id即为 training_id
+        container_id = container.id
+
+        # 将以下数据存入redis：
+        # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
+        ttl = config.config["trainings"]["ttl"]
+        r = db.get_redis_conn()
+        pipe = r.pipeline()
+        pipe.multi()
+        pipe.rpush(username, training_name)
+
+        # training_id的status及其ttl：key：<training_id>，value：1，ttl：***，ttl具体数值从config["trainings"]["ttl"]中读取
+        if not r.exists(container_id):
+            pipe.set(container_id, 1)
+            pipe.expire(container_id, ttl)
+        pipe.execute()
+        ret = {"training_id": container_id, "status": eval(r.get(container_id)), "ttl": eval(r.ttl(container_id))}
+        r.close()
+
+        # 返回
+        return ret, 201
+    except Exception as e:
+        app.log_exception(e)
         return "", 500
-    # main容器的id即为 training_id
-    container_id = container.id
-
-    # 将以下数据存入redis：
-    # 用户拥有的training：key：<username>:trainings，value：[]，此处的value是一个列表，因此需要以类似于append的方式存入
-    ttl = config.config["trainings"]["ttl"]
-    r = db.get_redis_conn()
-    pipe = r.pipeline()
-    pipe.multi()
-    pipe.rpush(username, training_name)
-
-    # training_id的status及其ttl：key：<training_id>，value：1，ttl：***，ttl具体数值从config["trainings"]["ttl"]中读取
-    if not r.exists(container_id):
-        pipe.set(container_id, 1)
-        pipe.expire(container_id, ttl)
-    pipe.execute()
-    ret = {"training_id": container_id, "status": r.get(container_id), "ttl": r.ttl(container_id)}
-    r.close()
-
-    # 返回
-    return ret, 201
 
 @app.route("/<username>/<training_name>", methods=["put"])
 def update_training_info(username, training_name):
     #Author: LRL
-    status = int(flask.request.form.get("status"))
-    r = db.get_redis_conn()
+    try:
+        status = eval(flask.request.form.get("status"))
+        if username == "" or training_name == "" or (status != 0 and status != 1):
+            return "", 400
 
-    if r.exists(username) == 0:
-        return "", 404
-    ok = 0
-    for name in r.lrange(username, 0, -1):
-        if name == training_name:
-            ok = 1
-            break
-    if ok == 0:
-        return "", 404
-    # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
-    training_id = 0
-    for container in client.containers.list(all=True):
-        if container.name == username + "_" + training_name + "_main_1":
-            training_id = container.id
-            break
-    if training_id == 0:
-        return "", 404
-    # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
-    assert (status == 0 or status == 1)
-    # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
-    ttl = config.config["trainings"]["ttl"]
-    pipe = r.pipeline()
-    if r.exists(training_id):
-        ttl = r.ttl(training_id)
-    pipe.set(training_id, status)
-    pipe.expire(training_id, ttl)
-    cmd = ""
-    if status == 0:
-        cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " stop"
-    else:
-        cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
-    os.system(cmd)
-    pipe.execute()
-    ret = {"training_id": training_id, "status": status, "ttl": r.ttl(training_id)}
-    r.close()
-    # 返回
-    return ret, 201
+        r = db.get_redis_conn()
+        if r.exists(username) == 0:
+            return "", 404
+
+        ok = 0
+        for name in r.lrange(username, 0, -1):
+            if name == training_name:
+                ok = 1
+                break
+        if ok == 0:
+            return "", 404
+        # 根据<username>和<training_name>获取对应的main容器，main容器的id即为 training_id
+        training_id = 0
+        for container in client.containers.list(all=True):
+            if container.name == username + "_" + training_name + "_main_1":
+                training_id = container.id
+                break
+
+        if training_id == 0:
+            return "", 404
+        # 通过 docker-compose -f trainings/<training_name>/docker-compose.yml -p <username>_<training_name> COMMAND，启动或停止对应的training
+        # assert (status == 0 or status == 1)
+        # 修改其在redis中对应的status，key：<training_id>，value为对应的状态码，1表示正在运行，0表示已停止
+        ttl = config.config["trainings"]["ttl"]
+        pipe = r.pipeline()
+        if r.exists(training_id):
+            ttl = r.ttl(training_id)
+        pipe.set(training_id, status)
+        pipe.expire(training_id, ttl)
+        cmd = ""
+        if status == 0:
+            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " down"
+        else:
+            cmd = "docker-compose -f ./trainings/" + training_name + "/docker-compose.yml -p " + username + "_" + training_name + " up -d"
+        os.system(cmd)
+        pipe.execute()
+        ret = {"training_id": training_id, "status": status, "ttl": eval(r.ttl(training_id))}
+        r.close()
+        # 返回
+        return ret, 201
+    except Exception as e:
+        app.log_exception(e)
+        return "", 500
 
 @app.route("/<username>/<training_name>", methods=["delete"])
 def remove_training(username, training_name):
