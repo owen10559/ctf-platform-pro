@@ -151,15 +151,16 @@ def get_training_config(training_name):
     # Author:@LSC
     # 读取对应training的config.json文件
     # 返回
-    if not os.path.exists("./trainings/"+training_name):
-        return "" , 404
-    if not os.path.exists("./trainings/"+training_name+"/config.json"):
-        return "" , 404
     try:
+        if not os.path.exists("./trainings/"+training_name):
+            return "" , 404
+        if not os.path.exists("./trainings/"+training_name+"/config.json"):
+            return "" , 404
         with open("./trainings/"+training_name+"/config.json") as f:
             config = json.load(f)
             return config , 200
     except Exception as e:
+        app.log_exception(e)
         return "" , 500
 
 @app.route("/flags/<training_name>", methods=["get"])
