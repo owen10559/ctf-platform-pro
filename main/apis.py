@@ -97,7 +97,10 @@ def create_training(username, training_name):
 def update_training_info(username, training_name):
     #Author: LRL
     try:
-        status = eval(flask.request.form.get("status"))
+        if flask.request.form.get("status") == "":
+            return "", 400
+        status = int(flask.request.form.get("status"))
+
         if username == "" or training_name == "" or (status != 0 and status != 1):
             return "", 400
 
