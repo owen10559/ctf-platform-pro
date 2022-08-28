@@ -147,13 +147,8 @@ def remove_training(username, training_name):
             pipe.close()
             r.close()
             return "", 204
-
-    except NameError:
-        print("training不存在！")
-        return "", 404
-    except ValueError:
-        print("training不存在！")
-        return "", 404
+        else:
+            return "", 404
     except Exception as e:
         app.log_exception(e)
         return "error", 500
