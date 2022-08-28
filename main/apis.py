@@ -155,8 +155,7 @@ def remove_training(username, training_name):
         print("training不存在！")
         return "", 404
     except Exception as e:
-        print("服务器错误！")
-        print(repr(e))
+        app.log_exception(e)
         return "error", 500
 
 
