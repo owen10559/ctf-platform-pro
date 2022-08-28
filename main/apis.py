@@ -49,7 +49,8 @@ def get_training_info(username, training_name):
         if ret == "":
             return "", 404
         return ret, 200
-    except print(0):
+    except Exception as e:
+        app.log_exception(e)
         return "", 500
 
 @app.route("/<username>/<training_name>", methods=["post"])
