@@ -1,7 +1,0 @@
-{
-    "training":{
-        "description":"PHP相等漏洞",
-        "hint":"How terrible! PHP weak equality!",
-        "flag":"flag{Subscribe_to_Diana_and_enjoy_your_meal}"
-    }
-}

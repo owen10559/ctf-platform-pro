@@ -1,7 +1,0 @@
-{
-    "training":{
-        "description":"尝试获取root用户的密码",
-        "hint":"SQL注入",
-        "flag":"flag{sql-injection}"
-    }
-}

@@ -1,7 +1,0 @@
-{
-    "training":{
-        "description":"http协议之POST方法",
-        "hint":"do you know http?",
-        "flag":"flag{avava!a_cute_scaleph}"
-    }
-}

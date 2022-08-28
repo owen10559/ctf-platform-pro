@@ -1,7 +1,0 @@
-{
-    "training":{
-        "description":"flask框架注入",
-        "hint":"python SSTI",
-        "flag":"flag{flask-injection}"
-    }
-}
