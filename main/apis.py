@@ -188,7 +188,8 @@ def get_training_config(training_name):
             return "" , 404
         with open("./trainings/"+training_name+"/config.json") as f:
             config = json.load(f)
-            return config , 200
+        config["training"].pop("flag")
+        return config["training"], 200
     except Exception as e:
         app.log_exception(e)
         return "" , 500
