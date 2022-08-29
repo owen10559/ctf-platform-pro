@@ -36,17 +36,17 @@ class RemotePool:
         try:
             remote_conn.connect((remote_ip, remote_port))
             self.remote_pool.append(remote_conn)
-            REMOTE_FLAG[remote_conn] = True
         except:
             logger.error('Unable to connect to the remote server on ' + remote_ip + ':' + str(remote_port))
             return
 
     def get_pool(self, remote_ip, remote_port):
-        for remote_conn in self.remote_pool:
-            if remote_conn.getpeername() == (remote_ip, remote_port):
-                return remote_conn
-        self.append_pool(remote_ip, remote_port)
-        return self.get_pool(remote_ip, remote_port)
+        # 重试10次
+        for i in range(10):
+            for remote_conn in self.remote_pool:
+                if remote_conn.getpeername() == (remote_ip, remote_port):
+                    return remote_conn
+            self.append_pool(remote_ip, remote_port)
 
     def close_error_conn(self):
         for remote_conn in self.remote_pool:
@@ -144,10 +144,10 @@ def forward_manager(local_conn: socket.socket):
             break
         container_id = uri.split('/')[2]
         req_split[1] = '/' + ''.join(uri.split('/')[3:])
-        req = ' '.join(req_split)
-        remote_ip = 'dind'
+        req = ' '.join(req_split).encode()
+        remote_ip = socket.gethostbyname('dind')
         remote_port = containers.get_export_port(containers.get_container(container_id=container_id))
-        remote_conn = remote_pool.get_pool(remote_ip, remote_port)
+        remote_conn = remote_pool.get_pool(remote_ip, int(remote_port))
         remote_conn.sendall(req)
         logger.info(f"Forward: {local_conn.getpeername()} -> {remote_conn.getpeername()} len: {len(req)}")
 
